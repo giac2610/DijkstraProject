@@ -40,7 +40,7 @@ def main():
           else:
                print("Using default seed.")
           print(f"Generating random graph with {num_nodes} nodes and density {density}, with  {'selected seed' if seed is not None else 'default seed'}")
-          graph = random_graphs.generate(num_nodes, density, seed)
+          graph = random_graphs.Random_Graph(num_nodes, density, seed)
           
           print("choose the number of queries:")
           num_queries = int(input("Enter number of queries: "))
