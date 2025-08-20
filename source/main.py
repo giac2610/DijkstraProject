@@ -16,12 +16,16 @@
 # - plot dei risultati
 
 from graphs import random_graphs, real_graphs
-from algorithms.djikstra import dijkstra
-from algorithms.d_contraction_hierarchies import contraction_hierarchies
-from utils import raw_data, plot_results
+from algorithms import djikstra as dj
+from algorithms import d_contraction_hierarchies as ch
+from utils import utils
 
 def main():
      print("Algorithm Comparison Tool")
+     print("Initialization...")
+     dijkstra = dj.Dijkstra()
+     contraction_hierarchies = ch.Contraction_Hierarchies()
+     raw_data = utils.RawData()
      print("Choose the type of graph:")
      print("1. Random Graph")
      print("2. Real Graph")
@@ -39,19 +43,24 @@ def main():
                print(f"Using seed: {seed}")
           else:
                print("Using default seed.")
+               # utils.getRandomSeed()
           print(f"Generating random graph with {num_nodes} nodes and density {density}, with  {'selected seed' if seed is not None else 'default seed'}")
           graph = random_graphs.Random_Graph(num_nodes, density, seed)
-          
-          print("choose the number of queries:")
+ 
+          print("choose the number of queries")
           num_queries = int(input("Enter number of queries: "))
           
           start_node_list, end_node_list = [], []
           for _ in range(num_queries):
                start_node = graph.get_random_node()
-               end_node = graph.get_random_node()
+               end_node = graph.get_random_node(start_node)
                start_node_list.append(start_node)
                end_node_list.append(end_node)
           
+          graph.plot_graph()
+          
+          # raw_data.save_nodes(start_node_list, end_node_list)
+
           dijkstra.run(graph, num_queries, start_node_list, end_node_list)
           contraction_hierarchies.run(graph, num_queries, start_node_list, end_node_list)
 
@@ -60,7 +69,7 @@ def main():
           ch_results = raw_data.load_ch_results()
           
           # plot the results
-          plot_results.plot(dijkstra_results, ch_results)
+          # plot_results.plot(dijkstra_results, ch_results)
           
      elif choice == '2':
           # TODO: Handle real graph
