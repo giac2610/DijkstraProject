@@ -13,8 +13,25 @@ class Contraction_Hierarchies:
      def run(self, graph, num_queries, start_node_list, end_node_list):
           pass
 
-     def _create_contraction_hierarchy(self):
-          pass
+     def _node_degree_priority(self):
+          # Restituisce una lista di nodi ordinati per grado crescente
+          return sorted(self.graph.nodes, key=lambda n: self.graph.degree(n))
+
+     def _edge_difference_priority(self):
+          # Restituisce una lista di nodi ordinati per edge difference crescente
+          priorities = {}
+          for node in self.graph.nodes:
+               neighbors = list(self.graph.neighbors(node))
+               original_edges = len(neighbors)
+               shortcut_edges = 0
+               # Conta scorciatoie necessarie tra i vicini
+               for i in range(len(neighbors)):
+                    for j in range(i+1, len(neighbors)):
+                         u, v = neighbors[i], neighbors[j]
+                    if not self.graph.has_edge(u, v):
+                         shortcut_edges += 1
+               priorities[node] = shortcut_edges - original_edges
+          return sorted(priorities, key=lambda n: priorities[n])
 
      def _ch_algotithm(self):
           pass
