@@ -62,7 +62,7 @@ def main():
           # raw_data.save_nodes(start_node_list, end_node_list)
 
           dijkstra.run(graph, num_queries, start_node_list, end_node_list)
-          # contraction_hierarchies.run(graph, num_queries, start_node_list, end_node_list)
+          contraction_hierarchies.run(graph, num_queries, start_node_list, end_node_list)
 
           # load results from CSV files
           # dijkstra_results = raw_data.load_dijkstra_results()

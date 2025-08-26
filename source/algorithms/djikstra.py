@@ -15,7 +15,6 @@ class Dijkstra:
           
      def run(self, graph, num_queries, start_node_list, end_node_list):
           self.graph = graph
-          self.num_queries = num_queries
           
           # randomize start and end nodes for each query
           for i in range(num_queries):
@@ -75,7 +74,6 @@ class Dijkstra:
                'preproccessing_time': 0,  # Non implementato
                'execution_time (ms)': elapsed_time,
                'explored_nodes': len(visited),
-               # 'space_occupation:': len(distances) + len(previous) + len(queue)
                'space_occupation (Byte):': sys.getsizeof(distances) + sys.getsizeof(previous) + sys.getsizeof(queue)
           }
      
