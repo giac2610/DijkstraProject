@@ -16,14 +16,13 @@ class Dijkstra:
      def run(self, graph, num_queries, start_node_list, end_node_list):
           self.graph = graph
           
-          # randomize start and end nodes for each query
+          # get randomized start and end nodes for each query
           for i in range(num_queries):
                start_node = start_node_list[i]
                end_node = end_node_list[i]
                result = self._real_dijkstra(start_node, end_node)
                self.results.append(result)
 
-          #save self.results to CSV
           self._save_results_to_csv()
 
      def _real_dijkstra(self, start_node, end_node):
@@ -67,14 +66,15 @@ class Dijkstra:
 
           end_time = time.time()
           elapsed_time = (end_time - start_time)* 1000  # Converti in millisecondi
-
+          space_ocupation = self.dataUtils.get_deep_size(distances) + self.dataUtils.get_deep_size(previous) + self.dataUtils.get_deep_size(queue)
+          
           return {
                'start_node': start_node,
                'end_node': end_node,
-               'preproccessing_time': 0,  # Non implementato
+               'preproccessing_time (ms)': 0,  # Non implementato
                'execution_time (ms)': elapsed_time,
                'explored_nodes': len(visited),
-               'space_occupation (Byte):': sys.getsizeof(distances) + sys.getsizeof(previous) + sys.getsizeof(queue)
+               'space_occupation (Byte):': space_ocupation
           }
      
      def _save_results_to_csv(self):
