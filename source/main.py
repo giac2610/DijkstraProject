@@ -57,19 +57,16 @@ def main():
                start_node_list.append(start_node)
                end_node_list.append(end_node)
           
-          # graph.plot_graph()
           
-          # raw_data.save_nodes(start_node_list, end_node_list)
-
           dijkstra.run(graph, num_queries, start_node_list, end_node_list)
           contraction_hierarchies.run(graph, num_queries, start_node_list, end_node_list)
 
           # load results from CSV files
-          # dijkstra_results = raw_data.load_dijkstra_results()
-          # ch_results = raw_data.load_ch_results()
+          dijkstra_results = raw_data.load_dijkstra_results()
+          ch_results = raw_data.load_ch_results()
           
           # plot the results
-          # plot_results.plot(dijkstra_results, ch_results)
+          raw_data.plot_and_analyze(dijkstra_results, ch_results)
           
      elif choice == '2':
           # TODO: Handle real graph
