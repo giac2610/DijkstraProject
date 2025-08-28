@@ -27,9 +27,10 @@ def main():
      contraction_hierarchies = ch.Contraction_Hierarchies()
      raw_data = utils.RawData()
      print("Choose the type of graph:")
-     print("1. Random Graph")
+     print("1. Interactive Random Graph")
      print("2. Real Graph")
-     choice = input("Enter your choice (1 or 2): ")
+     print("3. Full Test")
+     choice = input("Enter your choice (1, 2 or 3): ")
      if choice == '1':
           # Handle random graph
           num_nodes = int(input("Enter number of nodes: "))
@@ -70,6 +71,9 @@ def main():
           
      elif choice == '2':
           # TODO: Handle real graph
+          pass
+     elif choice == '3':
+          # TODO: Handle full test
           pass
      else:
          print("Invalid choice. Exiting.")

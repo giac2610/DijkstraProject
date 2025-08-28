@@ -1,24 +1,23 @@
 
-import networkx as nx
+import igraph as ig #type: ignore
 import random
 
 class Random_Graph:
     
     def __init__(self, node_num, density, seed):
-        number_of_nodes = node_num
-        graph_density = density
-        graph_seed = seed
-        self.graph = self._generate(number_of_nodes,graph_density, graph_seed)
+        self.graph = self._generate(node_num,density, seed)
 
     def _generate(self, node_number, density, seed):
         """
         Purpose: generate random graph with node_number nodes, with graph_Density and a known seed
         """
+        random.seed(seed)
         # Generate a random graph 
-        G = nx.gnp_random_graph(node_number, density, seed=seed)
+        G = ig.Graph.Erdos_Renyi(n=node_number, p=density)
+        
         # Pesi casuali agli archi
-        for u, v in G.edges():
-            G[u][v]['weight'] = random.randint(1, 10)
+        G.es['weight'] = [random.randint(1, 10) for _ in G.es]
+        
         return G
         
 
@@ -26,18 +25,13 @@ class Random_Graph:
         if start_node is not None:
             node = start_node
             while node == start_node:
-                node = random.choice(list(self.graph.nodes()))
+                node = random.choice(range(self.graph.vcount()))
             return node
-        return random.choice(list(self.graph.nodes()))
+        return random.choice(range(self.graph.vcount()))
 
     def plot_graph(self):
-        import matplotlib.pyplot as plt
-        pos = nx.spring_layout(self.graph)
-        nx.draw(self.graph, pos, with_labels=True, node_color='lightblue', node_size=50, font_size=5, font_color='black')
-        edge_labels = nx.get_edge_attributes(self.graph, 'weight')
-        nx.draw_networkx_edge_labels(self.graph, pos, edge_labels=edge_labels)
-        plt.title("Random Graph")
-        plt.show()
+        layout = self.graph.layout("kk")
+        ig.plot(self.graph, layout=layout, vertex_label=range(self.graph.vcount()))
 
     def test(self):
         print("Bravo hai dichiarato l'oggetto albero")

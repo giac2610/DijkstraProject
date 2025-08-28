@@ -29,9 +29,9 @@ class Dijkstra:
           # start the timer
           start_time = time.time()
 
-          graph_nx = self.graph.graph
-          distances = {node: float('inf') for node in graph_nx.nodes}
-          previous = {node: None for node in graph_nx.nodes}
+          graph_ig = self.graph.graph
+          distances = {node: float('inf') for node in range(graph_ig.vcount())}
+          previous = {node: None for node in range(graph_ig.vcount())}
           distances[start_node] = 0
 
           queue = [(0, start_node)]
@@ -46,8 +46,9 @@ class Dijkstra:
                if current_node == end_node:
                     break
 
-               for neighbor in graph_nx.neighbors(current_node):
-                    weight = graph_nx[current_node][neighbor].get('weight', 1)
+               for neighbor in graph_ig.neighbors(current_node):
+                    edge = graph_ig.es[graph_ig.get_eid(current_node, neighbor)]
+                    weight = edge['weight']
                     distance = current_dist + weight
                     if distance < distances[neighbor]:
                          distances[neighbor] = distance
@@ -69,9 +70,10 @@ class Dijkstra:
           space_ocupation = self.dataUtils.get_deep_size(distances) + self.dataUtils.get_deep_size(previous) + self.dataUtils.get_deep_size(queue)
           
           return {
+               'tot nodes': graph_ig.vcount(),
                'start_node': start_node,
                'end_node': end_node,
-               'preproccessing_time (ms)': 0,  # Non implementato
+               'preproccessing_time (ms)': 0,  
                'execution_time (ms)': elapsed_time,
                'explored_nodes': len(visited),
                'space_occupation (Byte):': space_ocupation
