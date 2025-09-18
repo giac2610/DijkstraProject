@@ -1,8 +1,9 @@
 
 import igraph as ig #type: ignore
 import random
+from graphs.graph_interface import GraphInterface
 
-class Random_Graph:
+class Random_Graph(GraphInterface):
     
     def __init__(self, node_num, density, seed):
         self.graph = self._generate(node_num,density, seed)
@@ -33,6 +34,4 @@ class Random_Graph:
         layout = self.graph.layout("kk")
         ig.plot(self.graph, layout=layout, vertex_label=range(self.graph.vcount()))
 
-    def test(self):
-        print("Bravo hai dichiarato l'oggetto albero")
 

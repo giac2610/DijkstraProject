@@ -149,6 +149,7 @@ class Contraction_Hierarchies:
                        self.dataUtils.get_deep_size(backward_queue))
         
         return {
+            'tot nodes': self.original_graph.vcount(),
             'start_node': start_node,
             'end_node': end_node,
             'preprocessing_time (ms)': self.preprocessing_time,

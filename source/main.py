@@ -71,7 +71,7 @@ def main():
           
      elif choice == '2':
           # TODO: Handle real graph
-          pass
+          realGraph = real_graphs.RealGraph()
      elif choice == '3':
           # TODO: Handle full test
           pass
