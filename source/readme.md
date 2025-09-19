@@ -1,7 +1,12 @@
 # Confronto tra dijkstra standard e dijkstra con contraction hierarchies
 
-## Avviare ambiente virtuale
+## Creare ambiente virtuale
 
+python -m venv .venv
+
+### Avviare l'ambiente virtuale
+
+source .venv/bin/activate
 
 ## Installare le dipendenze
 
