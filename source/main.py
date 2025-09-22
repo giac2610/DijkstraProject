@@ -14,11 +14,41 @@
      # - calcolo di pre-processing solo per CH
 # - salva risultati su CSV
 # - plot dei risultati
-
+import numpy as np
 from graphs import random_graphs, real_graphs
 from algorithms import djikstra as dj
 from algorithms import d_contraction_hierarchies as ch
 from utils import utils
+
+def run_single_experiment(graph_obj, graph_name, num_queries, dijkstra, ch_algo):
+     """
+     Esegue un singolo esperimento (Dijkstra vs CH) su un dato grafo.
+     Restituisce i risultati per entrambi gli algoritmi.
+     """
+     print(f"\n--- Inizio esperimento su: {graph_name} ---")
+     print(f"Numero di nodi: {graph_obj.graph.vcount()}, Numero di archi: {graph_obj.graph.ecount()}")
+
+     # Genera un set fisso di query per la riproducibilità
+     start_node_list, end_node_list = [], []
+     for _ in range(num_queries):
+          start_node = graph_obj.get_random_node()
+          end_node = graph_obj.get_random_node(start_node)
+          start_node_list.append(start_node)
+          end_node_list.append(end_node)
+
+     # Esegui gli algoritmi
+     print(f"Esecuzione di {num_queries} query...")
+     dijkstra_results = dijkstra.run(graph_obj, num_queries, start_node_list, end_node_list)
+     ch_results = ch_algo.run(graph_obj, num_queries, start_node_list, end_node_list)
+
+     # Aggiungi il nome del grafo a ogni risultato per l'analisi aggregata
+     for res in dijkstra_results:
+          res['graph_name'] = graph_name
+     for res in ch_results:
+          res['graph_name'] = graph_name
+     
+     print(f"--- Esperimento su {graph_name} completato ---")
+     return dijkstra_results, ch_results
 
 def main():
      print("Algorithm Comparison Tool")
@@ -32,76 +62,77 @@ def main():
      print("3. Full Test")
      choice = input("Enter your choice (1, 2 or 3): ")
      if choice == '1':
-          # Handle random graph
           num_nodes = int(input("Enter number of nodes: "))
           density = float(input("Enter density (0-1): "))
-          print("choose if you wasnt a random seed or not:")
-          random_seed = input("personalized seed? (y/n): ").strip().lower()
-          randomize = random_seed == 'y'
-          seed = None
-          if randomize:
-               seed = int(input("Enter your seed: "))
-               print(f"Using seed: {seed}")
-          else:
-               print("Using default seed.")
-               # utils.getRandomSeed()
-          print(f"Generating random graph with {num_nodes} nodes and density {density}, with  {'selected seed' if seed is not None else 'default seed'}")
-          graph = random_graphs.Random_Graph(num_nodes, density, seed)
- 
-          print("choose the number of queries")
-          num_queries = int(input("Enter number of queries: "))
-          
-          start_node_list, end_node_list = [], []
-          for _ in range(num_queries):
-               start_node = graph.get_random_node()
-               end_node = graph.get_random_node(start_node)
-               start_node_list.append(start_node)
-               end_node_list.append(end_node)
-          
-          
-          dijkstra.run(graph, num_queries, start_node_list, end_node_list)
-          contraction_hierarchies.run(graph, num_queries, start_node_list, end_node_list)
-
-          # load results from CSV files
-          dijkstra_results = raw_data.load_dijkstra_results()
-          ch_results = raw_data.load_ch_results()
-          
-          # plot the results
-          raw_data.plot_and_analyze(dijkstra_results, ch_results)
-          
+          graph = random_graphs.Random_Graph(num_nodes, density, seed=42)
+          d_res, ch_res = run_single_experiment(graph, f"Random_{num_nodes}", 100, dijkstra, contraction_hierarchies)
+          raw_data.save_to_csv('dijkstra_interactive_results.csv', d_res)
+          raw_data.save_to_csv('ch_interactive_results.csv', ch_res)
+          print("Risultati salvati.")
+               
      elif choice == '2':
-               # Handle real graph
-               print("Generating real graph from OpenStreetMap data for L'Aquila...")
-               graph = real_graphs.RealGraph()
-               print("Graph generated successfully.")
-               
-               print("Choose the number of queries:")
-               num_queries = int(input("Enter number of queries: "))
-               
-               # Genera una lista di nodi di partenza e arrivo casuali
-               start_node_list, end_node_list = [], []
-               for _ in range(num_queries):
-                    start_node = graph.get_random_node()
-                    end_node = graph.get_random_node(start_node)
-                    start_node_list.append(start_node)
-                    end_node_list.append(end_node)
-               
-               # Esegue gli algoritmi
-               print(f"Running Dijkstra on {num_queries} queries...")
-               dijkstra.run(graph, num_queries, start_node_list, end_node_list)
-               
-               print(f"Running Contraction Hierarchies on {num_queries} queries...")
-               contraction_hierarchies.run(graph, num_queries, start_node_list, end_node_list)
-     
-               # Carica e visualizza i risultati
-               print("Plotting and analyzing results...")
-               dijkstra_results = raw_data.load_dijkstra_results()
-               ch_results = raw_data.load_ch_results()
-               
-               raw_data.plot_and_analyze(dijkstra_results, ch_results)
+          place_name = 'L\'Aquila, Abruzzo, Italy'
+          graph = real_graphs.RealGraph(place_name)
+          d_res, ch_res = run_single_experiment(graph, place_name.split(',')[0], 100, dijkstra, contraction_hierarchies)
+          raw_data.save_to_csv('dijkstra_interactive_results.csv', d_res)
+          raw_data.save_to_csv('ch_interactive_results.csv', ch_res)
+          print("Risultati salvati.")
      elif choice == '3':
-          # TODO: Handle full test
-          pass
+          print("\n===== Avvio Full Test Suite =====")
+          # Liste separate per i risultati
+          random_dijkstra_results = []
+          random_ch_results = []
+          real_dijkstra_results = []
+          real_ch_results = []
+          NUM_QUERIES_PER_TEST = 100
+
+          # --- Test su Grafi Random ---
+          print("\n[PARTE 1] Test su grafi random di dimensioni crescenti...")
+          node_steps = np.linspace(500, 15000, 10, dtype=int)
+          for num_nodes in node_steps:
+               avg_degree = 2.5
+               density = avg_degree / num_nodes
+               
+               graph = random_graphs.Random_Graph(num_nodes, density, seed=42)
+               graph_name = f"Random_{num_nodes}_nodes"
+               
+               d_res, ch_res = run_single_experiment(graph, graph_name, NUM_QUERIES_PER_TEST, dijkstra, contraction_hierarchies)
+               random_dijkstra_results.extend(d_res)
+               random_ch_results.extend(ch_res)
+          
+          # --- Test su Grafi Reali ---
+          print("\n[PARTE 2] Test su grafi stradali reali...")
+          cities = ["L'Aquila, Abruzzo, Italy", "Rome, Lazio, Italy", "Milan, Lombardia, Italy"]
+
+          for city in cities:
+               try:
+                    graph = real_graphs.RealGraph(city)
+                    graph_name = city.split(',')[0]
+                    
+                    d_res, ch_res = run_single_experiment(graph, graph_name, NUM_QUERIES_PER_TEST, dijkstra, contraction_hierarchies)
+                    real_dijkstra_results.extend(d_res)
+                    real_ch_results.extend(ch_res)
+               except Exception as e:
+                    print(f"ERRORE: Impossibile scaricare o processare il grafo per {city}. Dettagli: {e}")
+                    print("Continuo con il prossimo test...")
+
+          # --- Salvataggio dei risultati in file separati ---
+          print("\n[PARTE 3] Salvataggio dei risultati aggregati...")
+          print(random_dijkstra_results)
+          print(real_dijkstra_results)
+          if random_dijkstra_results:
+               raw_data.save_to_csv('RANDOM_TESTS_dijkstra_results.csv', random_dijkstra_results)
+               raw_data.save_to_csv('RANDOM_TESTS_ch_results.csv', random_ch_results)
+          if real_dijkstra_results:
+               raw_data.save_to_csv('REAL_TESTS_dijkstra_results.csv', real_dijkstra_results)
+               raw_data.save_to_csv('REAL_TESTS_ch_results.csv', real_ch_results)
+          
+          print("\n===== Full Test Suite Completato! =====")
+          print("I tuoi dati sono pronti per l'analisi nei file:")
+          print("- RANDOM_TESTS_dijkstra_results.csv")
+          print("- RANDOM_TESTS_ch_results.csv")
+          print("- REAL_TESTS_dijkstra_results.csv")
+          print("- REAL_TESTS_ch_results.csv")
      else:
          print("Invalid choice. Exiting.")
          return

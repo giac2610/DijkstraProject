@@ -10,26 +10,26 @@ class Dijkstra:
      def __init__(self):
           self.graph = None
           self.num_queries = 0
-          self.results = []
+          # self.results = []
           self.dataUtils = RawData()
           
      def run(self, graph, num_queries, start_node_list, end_node_list):
-          self.graph = graph
-          
+          self.graph = graph.graph
+          results = []
           # get randomized start and end nodes for each query
           for i in range(num_queries):
                start_node = start_node_list[i]
                end_node = end_node_list[i]
                result = self._real_dijkstra(start_node, end_node)
-               self.results.append(result)
+               results.append(result)
 
-          self._save_results_to_csv()
+          return results
+          # self._save_results_to_csv()
 
      def _real_dijkstra(self, start_node, end_node):
           # start the timer
           start_time = time.time()
-
-          graph_ig = self.graph.graph
+          graph_ig = self.graph
           distances = {node: float('inf') for node in range(graph_ig.vcount())}
           previous = {node: None for node in range(graph_ig.vcount())}
           distances[start_node] = 0
@@ -78,6 +78,3 @@ class Dijkstra:
                'explored_nodes': len(visited),
                'space_occupation (Byte):': space_ocupation
           }
-     
-     def _save_results_to_csv(self):
-          self.dataUtils.save_to_csv('dijkstra_results.csv', self.results) 

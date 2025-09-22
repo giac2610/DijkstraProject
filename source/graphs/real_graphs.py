@@ -5,23 +5,23 @@ import igraph as ig
 import matplotlib.pyplot as plt
 import random
 
-weight = "length"
+# weight = "length"
 
 class RealGraph(GraphInterface):
      
-    def __init__(self):
-        self.graph, self.G_nx, self.gdf = self._generate()
+     def __init__(self, place_name="L'Aquila, Abruzzo, Italy"):
+          self.place_name = place_name
+          self.graph, self.G_nx, self.gdf = self._generate()
 
-    def _generate(self):
-        place = "L'Aquila, Abruzzo, Italy"
+     def _generate(self):
         
         # Scarica il grafo stradale e il geodataframe del contorno della città
-        G_nx = ox.graph.graph_from_place(place, network_type="drive")
+        G_nx = ox.graph.graph_from_place(self.place_name, network_type="drive")
+        gdf = ox.geocoder.geocode_to_gdf(self.place_name)
         # 1. Aggiunge le velocità stimate in base al tipo di strada
         G_nx = ox.add_edge_speeds(G_nx)
         # 2. Calcola i tempi di percorrenza (lunghezza/velocità)
         G_nx = ox.add_edge_travel_times(G_nx)
-        gdf = ox.geocoder.geocode_to_gdf(place)
         
         # Salva gli ID originali di OpenStreetMap (osmid) prima di rinumerare i nodi
         osmids = list(G_nx.nodes)
@@ -49,7 +49,7 @@ class RealGraph(GraphInterface):
 
         return G_ig, G_nx_reindexed, gdf
 
-    def get_random_node(self, start_node=None):
+     def get_random_node(self, start_node=None):
         if start_node is not None:
             node = start_node
             # Continua a scegliere un nodo finché non ne trova uno diverso da start_node
@@ -60,7 +60,7 @@ class RealGraph(GraphInterface):
         # Se non viene fornito start_node, restituisce un qualsiasi nodo casuale
         return random.choice(range(self.graph.vcount()))
 
-    def plot_graph(self):
+     def plot_graph(self):
         fig, ax = ox.plot.plot_graph(
             self.G_nx,
             show=False,

@@ -158,10 +158,13 @@ class Contraction_Hierarchies:
         self.preprocess()
         print(f"Preprocessing finished in {self.preprocessing_time:.2f} ms.")
         results = []
+        print("appending results...")
         for i in range(num_queries):
             start_node = start_node_list[i]
             end_node = end_node_list[i]
             result = self.query(start_node, end_node)
             results.append(result)
-        self.dataUtils.save_to_csv('contraction_hierarchies_results.csv', results)
-        print(f"Saved contraction hierarchies results")
+        
+        return results
+        # self.dataUtils.save_to_csv('contraction_hierarchies_results.csv', results)
+        # print(f"Saved contraction hierarchies results")
