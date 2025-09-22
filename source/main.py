@@ -70,8 +70,35 @@ def main():
           raw_data.plot_and_analyze(dijkstra_results, ch_results)
           
      elif choice == '2':
-          # TODO: Handle real graph
-          realGraph = real_graphs.RealGraph()
+               # Handle real graph
+               print("Generating real graph from OpenStreetMap data for L'Aquila...")
+               graph = real_graphs.RealGraph()
+               print("Graph generated successfully.")
+               
+               print("Choose the number of queries:")
+               num_queries = int(input("Enter number of queries: "))
+               
+               # Genera una lista di nodi di partenza e arrivo casuali
+               start_node_list, end_node_list = [], []
+               for _ in range(num_queries):
+                    start_node = graph.get_random_node()
+                    end_node = graph.get_random_node(start_node)
+                    start_node_list.append(start_node)
+                    end_node_list.append(end_node)
+               
+               # Esegue gli algoritmi
+               print(f"Running Dijkstra on {num_queries} queries...")
+               dijkstra.run(graph, num_queries, start_node_list, end_node_list)
+               
+               print(f"Running Contraction Hierarchies on {num_queries} queries...")
+               contraction_hierarchies.run(graph, num_queries, start_node_list, end_node_list)
+     
+               # Carica e visualizza i risultati
+               print("Plotting and analyzing results...")
+               dijkstra_results = raw_data.load_dijkstra_results()
+               ch_results = raw_data.load_ch_results()
+               
+               raw_data.plot_and_analyze(dijkstra_results, ch_results)
      elif choice == '3':
           # TODO: Handle full test
           pass

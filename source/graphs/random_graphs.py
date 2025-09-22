@@ -9,18 +9,28 @@ class Random_Graph(GraphInterface):
         self.graph = self._generate(node_num,density, seed)
 
     def _generate(self, node_number, density, seed):
-        """
-        Purpose: generate random graph with node_number nodes, with graph_Density and a known seed
-        """
         random.seed(seed)
-        # Generate a random graph 
-        G = ig.Graph.Erdos_Renyi(n=node_number, p=density)
+        
+        # Calcoliamo i parametri per Watts-Strogatz
+        # k è il grado medio di ciascun nodo (numero di vicini)
+        # Assumiamo che ogni nodo sia connesso ai suoi k/2 vicini più prossimi
+        k = int(node_number * density)
+        if k < 2: k = 2
+        
+        # p è la probabilità di "rewiring" di un arco
+        p = 0.1
+
+        print(f"Generating Watts-Strogatz graph with n={node_number}, k={k}, p={p}")
+        
+        G = ig.Graph.Watts_Strogatz(dim=1, size=node_number, nei=k, p=p)
+        
+        # Rendiamo il grafo diretto per coerenza con il grafo reale
+        G.to_directed()
         
         # Pesi casuali agli archi
         G.es['weight'] = [random.randint(1, 10) for _ in G.es]
         
         return G
-        
 
     def get_random_node(self, start_node=None):
         if start_node is not None:

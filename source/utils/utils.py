@@ -39,7 +39,7 @@ class RawData:
         return pd.read_csv('dijkstra_results.csv')
     
     def load_ch_results(self):
-        return pd.read_csv('contraction_hieraarchies_results.csv')
+        return pd.read_csv('contraction_hierarchies_results.csv')
     
     def plot_and_analyze(self, df_dijkstra, df_ch):
         

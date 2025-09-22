@@ -46,9 +46,9 @@ class Dijkstra:
                if current_node == end_node:
                     break
 
-               for neighbor in graph_ig.neighbors(current_node):
-                    edge = graph_ig.es[graph_ig.get_eid(current_node, neighbor)]
-                    weight = edge['weight']
+               for neighbor in graph_ig.neighbors(current_node, mode="out"):
+                    eid = graph_ig.get_eid(current_node, neighbor)
+                    weight = graph_ig.es[eid]['weight']
                     distance = current_dist + weight
                     if distance < distances[neighbor]:
                          distances[neighbor] = distance
