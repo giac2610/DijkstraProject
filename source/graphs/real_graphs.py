@@ -29,7 +29,8 @@ class RealGraph(GraphInterface):
         G_nx_reindexed = ox.add_edge_travel_times(G_nx_reindexed)
         
         # Creiamo il grafo igraph
-        G_ig = ig.Graph.from_networkx(G_nx_reindexed, create_using=nx.DiGraph)
+        G_ig = ig.Graph.from_networkx(G_nx_reindexed)
+        # G_ig = ig.Graph.from_networkx(G_nx_reindexed, create_using=nx.DiGraph)
         G_ig.es['weight'] = G_ig.es['travel_time']
         
         # Conserviamo il grafo networkx originale (con osmid) solo per il plotting

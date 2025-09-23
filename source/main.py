@@ -45,14 +45,15 @@ def run_single_experiment(graph_obj, graph_name, num_queries, dijkstra, ch_algo)
      # Aggiungi il nome del grafo a ogni risultato per l'analisi aggregata
      for res in dijkstra_results:
           res['graph_name'] = graph_name
+          res['queries'] = num_queries
      for res in ch_results:
           res['graph_name'] = graph_name
+          res['queries'] = num_queries
      
      print(f"--- Esperimento su {graph_name} completato ---")
      return dijkstra_results, ch_results
 
 def main():
-     test_name = ""
      print("Algorithm Comparison Tool")
      print("Initialization...")
      dijkstra = dj.Dijkstra()
@@ -89,21 +90,22 @@ def main():
           random_ch_results = []
           real_dijkstra_results = []
           real_ch_results = []
-          NUM_QUERIES_PER_TEST = 100
+          NUM_QUERIES_PER_REAL_TEST = 250
 
           # --- Test su Grafi Random ---
           print("\n[PARTE 1] Test su grafi random di dimensioni crescenti...")
-          node_steps = np.linspace(500, 15000, 10, dtype=int)
+          node_steps = np.linspace(500, 15000, 5, dtype=int)
           for num_nodes in node_steps:
-               avg_degree = 2.5
-               density = avg_degree / num_nodes
-               
-               graph = random_graphs.Random_Graph(num_nodes, density, seed=42)
-               graph_name = f"Random_{num_nodes}_nodes"
-               
-               d_res, ch_res = run_single_experiment(graph, graph_name, NUM_QUERIES_PER_TEST, dijkstra, contraction_hierarchies)
-               random_dijkstra_results.extend(d_res)
-               random_ch_results.extend(ch_res)
+               for avg_degree in [1.5, 2.5, 3.5]:
+                    for query_num in [50, 150, 500]:
+                         density = avg_degree / num_nodes
+                         
+                         graph = random_graphs.Random_Graph(num_nodes, density, seed=42)
+                         graph_name = f"Random_{num_nodes}_nodes_deg_{avg_degree}_queries_{query_num}"
+                         
+                         d_res, ch_res = run_single_experiment(graph, graph_name, query_num, dijkstra, contraction_hierarchies)
+                         random_dijkstra_results.extend(d_res)
+                         random_ch_results.extend(ch_res)
           
           # --- Test su Grafi Reali ---
           print("\n[PARTE 2] Test su grafi stradali reali...")
@@ -114,7 +116,7 @@ def main():
                     graph = real_graphs.RealGraph(city)
                     graph_name = city.split(',')[0]
                     
-                    d_res, ch_res = run_single_experiment(graph, graph_name, NUM_QUERIES_PER_TEST, dijkstra, contraction_hierarchies)
+                    d_res, ch_res = run_single_experiment(graph, graph_name, NUM_QUERIES_PER_REAL_TEST, dijkstra, contraction_hierarchies)
                     real_dijkstra_results.extend(d_res)
                     real_ch_results.extend(ch_res)
                except Exception as e:
@@ -123,8 +125,8 @@ def main():
 
           # --- Salvataggio dei risultati in file separati ---
           print("\n[PARTE 3] Salvataggio dei risultati aggregati...")
-          print(random_dijkstra_results)
-          print(real_dijkstra_results)
+          # print(random_dijkstra_results)
+          # print(real_dijkstra_results)
           if random_dijkstra_results:
                raw_data.save_to_csv('RANDOM_TESTS_dijkstra_results.csv', random_dijkstra_results)
                raw_data.save_to_csv('RANDOM_TESTS_ch_results.csv', random_ch_results)
@@ -138,6 +140,12 @@ def main():
           print("- RANDOM_TESTS_ch_results.csv")
           print("- REAL_TESTS_dijkstra_results.csv")
           print("- REAL_TESTS_ch_results.csv")
+          
+          # plot all the analysis automatically
+          
+          from analysis import main_menu
+          main_menu(7)  # Pass '7' to run all analyses automatically
+          
      else:
          print("Invalid choice. Exiting.")
          return
