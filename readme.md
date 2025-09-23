@@ -12,6 +12,28 @@ source .venv/bin/activate
 
 ```pip install -r requirements.txt```
 
-## Funzionamento
+## Funzionamento generale
 
-python main.py
+per avviare il programma aprire il terminale e avviare il codice con:
+
+```python main.py```
+
+si aprirà un menù da terminale che consentirà di effettuare 3 scelte:
+
+1. Test Random
+2. Test Reali
+3. Suite di Testa completa che salva tutti i dati e grafici nella cartella results
+
+la scelta numero 3 è quella che è stata usata per creare i csv con i dati e i relativi grafici.
+
+### Test Random
+
+scelta numero 1, 
+
+### Test Reali
+
+scelta numero 2,
+
+### Full test + plot
+
+scelta numero 3,

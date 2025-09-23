@@ -144,7 +144,7 @@ def main():
           # plot all the analysis automatically
           
           from analysis import main_menu
-          main_menu(7)  # Pass '7' to run all analyses automatically
+          main_menu('7')  # Pass '7' to run all analyses automatically
           
      else:
          print("Invalid choice. Exiting.")
