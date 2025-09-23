@@ -14,6 +14,7 @@
      # - calcolo di pre-processing solo per CH
 # - salva risultati su CSV
 # - plot dei risultati
+
 import numpy as np
 from graphs import random_graphs, real_graphs
 from algorithms import djikstra as dj
@@ -51,6 +52,7 @@ def run_single_experiment(graph_obj, graph_name, num_queries, dijkstra, ch_algo)
      return dijkstra_results, ch_results
 
 def main():
+     test_name = ""
      print("Algorithm Comparison Tool")
      print("Initialization...")
      dijkstra = dj.Dijkstra()
@@ -62,6 +64,7 @@ def main():
      print("3. Full Test")
      choice = input("Enter your choice (1, 2 or 3): ")
      if choice == '1':
+          test_name = "Test 1"
           num_nodes = int(input("Enter number of nodes: "))
           density = float(input("Enter density (0-1): "))
           graph = random_graphs.Random_Graph(num_nodes, density, seed=42)
@@ -71,6 +74,7 @@ def main():
           print("Risultati salvati.")
                
      elif choice == '2':
+          test_name = "Test 2"
           place_name = 'L\'Aquila, Abruzzo, Italy'
           graph = real_graphs.RealGraph(place_name)
           d_res, ch_res = run_single_experiment(graph, place_name.split(',')[0], 100, dijkstra, contraction_hierarchies)
@@ -78,6 +82,7 @@ def main():
           raw_data.save_to_csv('ch_interactive_results.csv', ch_res)
           print("Risultati salvati.")
      elif choice == '3':
+          test_name = "Test 3"
           print("\n===== Avvio Full Test Suite =====")
           # Liste separate per i risultati
           random_dijkstra_results = []

@@ -2,8 +2,6 @@
 import heapq
 import time
 import sys
-
-
 from utils.utils import RawData
 
 class Dijkstra:
@@ -54,6 +52,8 @@ class Dijkstra:
                          distances[neighbor] = distance
                          previous[neighbor] = current_node
                          heapq.heappush(queue, (distance, neighbor))
+          end_time = time.time()
+          elapsed_time = (end_time - start_time)* 1000  # Converti in millisecondi
 
           # Ricostruisci il percorso
           path = []
@@ -65,8 +65,6 @@ class Dijkstra:
           else:
                path = None  # Nessun percorso trovato
 
-          end_time = time.time()
-          elapsed_time = (end_time - start_time)* 1000  # Converti in millisecondi
           space_ocupation = self.dataUtils.get_deep_size(distances) + self.dataUtils.get_deep_size(previous) + self.dataUtils.get_deep_size(queue)
           
           return {
@@ -76,5 +74,6 @@ class Dijkstra:
                'preproccessing_time (ms)': 0,  
                'execution_time (ms)': elapsed_time,
                'explored_nodes': len(visited),
-               'space_occupation (Byte):': space_ocupation
+               'space_occupation (Byte):': space_ocupation,
+               'path': path if path else 'No path found'
           }

@@ -5,82 +5,76 @@ import igraph as ig
 import matplotlib.pyplot as plt
 import random
 
-# weight = "length"
-
 class RealGraph(GraphInterface):
      
-     def __init__(self, place_name="L'Aquila, Abruzzo, Italy"):
-          self.place_name = place_name
-          self.graph, self.G_nx, self.gdf = self._generate()
+    def __init__(self, place_name="L'Aquila, Abruzzo, Italy"):
+        self.place_name = place_name
+        self.graph, self.G_nx, self.gdf, self.node_to_osmid, self.G_nx_orig_plot = self._generate()
 
-     def _generate(self):
+    def _generate(self):
+        print(f"Download dei dati stradali per: {self.place_name}...")
         
-        # Scarica il grafo stradale e il geodataframe del contorno della città
-        G_nx = ox.graph.graph_from_place(self.place_name, network_type="drive")
+        # Scarichiamo il grafo con osmid come etichette dei nodi
+        G_nx_orig = ox.graph.graph_from_place(self.place_name, network_type="drive")
+        
+        # Creiamo le mappe di conversione da osmid a indice intero e viceversa
+        self.node_to_osmid = {i: osmid for i, osmid in enumerate(G_nx_orig.nodes())}
+        
+        # Rinominiamo i nodi del grafo networkx in interi per compatibilità con igraph
+        G_nx_reindexed = nx.relabel.convert_node_labels_to_integers(G_nx_orig)
+        
         gdf = ox.geocoder.geocode_to_gdf(self.place_name)
-        # 1. Aggiunge le velocità stimate in base al tipo di strada
-        G_nx = ox.add_edge_speeds(G_nx)
-        # 2. Calcola i tempi di percorrenza (lunghezza/velocità)
-        G_nx = ox.add_edge_travel_times(G_nx)
         
-        # Salva gli ID originali di OpenStreetMap (osmid) prima di rinumerare i nodi
-        osmids = list(G_nx.nodes)
+        G_nx_reindexed = ox.add_edge_speeds(G_nx_reindexed)
+        G_nx_reindexed = ox.add_edge_travel_times(G_nx_reindexed)
         
-        # Converte le etichette dei nodi da osmid a interi (es. 0, 1, 2, ...) per la compatibilità con igraph
-        G_nx_reindexed = nx.relabel.convert_node_labels_to_integers(G_nx)
+        # Creiamo il grafo igraph
+        G_ig = ig.Graph.from_networkx(G_nx_reindexed, create_using=nx.DiGraph)
+        G_ig.es['weight'] = G_ig.es['travel_time']
         
-        # Crea un grafo igraph vuoto e aggiunge vertici e archi dal grafo networkx
-        G_ig = ig.Graph(directed=True)
-        G_ig.add_vertices(G_nx_reindexed.nodes)
-        G_ig.add_edges(G_nx_reindexed.edges())
+        # Conserviamo il grafo networkx originale (con osmid) solo per il plotting
+        G_nx_orig_plot = G_nx_orig
         
-        # Assegna gli attributi al grafo igraph
-        osmid_mapping = {i: osmid for i, osmid in enumerate(osmids)}
-        # Mappa i nuovi indici interi ai loro osmid originali
-        G_ig.vs["osmid"] = [osmid_mapping[v.index] for v in G_ig.vs]
-        
-        # Il nome dell'attributo da osmnx ('length' o 'travel_time')
-        source_weight_attribute = "travel_time" 
-        # Prendiamo i valori da osmnx usando il suo nome specifico
-        edge_weights = nx.get_edge_attributes(G_nx_reindexed, source_weight_attribute).values()
-        
-        # Assegniamo questi valori all'attributo standard 'weight' che l'algoritmo si aspetta
-        G_ig.es['weight'] = list(edge_weights)
+        return G_ig, G_nx_reindexed, gdf, self.node_to_osmid, G_nx_orig_plot
 
-        return G_ig, G_nx_reindexed, gdf
-
-     def get_random_node(self, start_node=None):
+    def get_random_node(self, start_node=None):
         if start_node is not None:
             node = start_node
-            # Continua a scegliere un nodo finché non ne trova uno diverso da start_node
             while node == start_node:
                 node = random.choice(range(self.graph.vcount()))
             return node
-        
-        # Se non viene fornito start_node, restituisce un qualsiasi nodo casuale
         return random.choice(range(self.graph.vcount()))
 
-     def plot_graph(self):
-        fig, ax = ox.plot.plot_graph(
-            self.G_nx,
-            show=False,
-            close=False,
-            bgcolor="#111111",
-            edge_color="#ffcb00",
-            edge_linewidth=0.3,
-            node_size=0,
-        )
+    def plot_graph(self, path=None, start_node=None, end_node=None):
+        """
+        Visualizza il grafo. 
+        - Se viene fornito un 'path' (lista di indici di nodi), evidenzia quel percorso.
+        - Se vengono forniti 'start_node' e 'end_node', evidenzia i punti di inizio e fine.
+        """
+        nodes_to_color = []
+        if start_node is not None and start_node in self.node_to_osmid:
+            nodes_to_color.append(self.node_to_osmid.get(start_node))
+        if end_node is not None and end_node in self.node_to_osmid:
+            nodes_to_color.append(self.node_to_osmid.get(end_node))
 
-        # Aggiunge il contorno della città (geodataframe) al plot come sfondo
-        self.gdf.plot(ax=ax, fc="#444444", ec=None, lw=1, alpha=1, zorder=-1)
+        # Colora i nodi di partenza/arrivo e rendili visibili
+        node_colors = ['green' if node in nodes_to_color else '#111111' for node in self.G_nx_orig_plot.nodes()]
+        node_sizes = [50 if node in nodes_to_color else 0 for node in self.G_nx_orig_plot.nodes()]
 
-        # Imposta i limiti della mappa per una visualizzazione ottimale
-        margin = 0.02
-        west, south, east, north = self.gdf.union_all().bounds
-        margin_ns = (north - south) * margin
-        margin_ew = (east - west) * margin
-        ax.set_ylim((south - margin_ns, north + margin_ns))
-        ax.set_xlim((west - margin_ew, east + margin_ew))
-        
-        # Mostra il plot a schermo
-        plt.show()
+        if path and isinstance(path, list) and len(path) > 1:
+            # Convertiamo i nostri indici interni di nuovo in OSMID, che osmnx capisce
+            osmid_path = [self.node_to_osmid[node_idx] for node_idx in path if node_idx in self.node_to_osmid]
+            
+            if len(osmid_path) < 2:
+                print("Percorso troppo corto per essere visualizzato.")
+                ox.plot_graph(self.G_nx_orig_plot, node_size=node_sizes, node_color=node_colors, edge_linewidth=0.5, bgcolor="#111111", edge_color="w")
+                return
+            
+            print("Visualizzazione del grafo con percorso evidenziato...")
+            # Usiamo la funzione di osmnx per plottare il grafo con il percorso
+            ox.plot_graph_route(self.G_nx_orig_plot, osmid_path, route_color='r', route_linewidth=4, 
+                                node_size=node_sizes, node_color=node_colors, bgcolor="#111111", edge_color="w")
+        else:
+            print("Visualizzazione del grafo (senza percorso specificato)...")
+            ox.plot_graph(self.G_nx_orig_plot, node_size=node_sizes, node_color=node_colors, edge_linewidth=0.5, bgcolor="#111111", edge_color="w")
+

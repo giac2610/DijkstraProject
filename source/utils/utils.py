@@ -1,8 +1,6 @@
 import csv
 import sys
 import pandas as pd
-import matplotlib.pyplot as plt
-# import seaborn as sns
 import os
 
 class RawData:
@@ -23,10 +21,8 @@ class RawData:
 
     def save_to_csv(self, filename, data):
         """
-        Salva una lista di dizionari in un file CSV all'interno di una cartella 'results'.
-        Crea la cartella se non esiste e aggiunge una diagnostica.
+        Salva una lista di dizionari in un file CSV all'interno della cartella 'results'.
         """
-        # --- DIAGNOSTICA AGGIUNTA ---
         print(f"\n--- Diagnostica di Salvataggio per '{filename}' ---")
         if not data:
             print("RISULTATO: La lista dei dati è VUOTA. Nessun file verrà salvato.")
@@ -34,7 +30,6 @@ class RawData:
         
         print(f"RISULTATO: Ricevuti {len(data)} record da salvare.")
         print(f"  - Colonne trovate: {list(data[0].keys())}")
-        # ---------------------------
         
         results_dir = 'results'
         os.makedirs(results_dir, exist_ok=True)
