@@ -1,7 +1,8 @@
 import time
-import sys
 import heapq
+import numpy as np
 from utils.utils import RawData
+import sys
 
 class Contraction_Hierarchies:
     def __init__(self, graph=None):
@@ -12,37 +13,68 @@ class Contraction_Hierarchies:
         self.node_levels = None
         self.preprocessing_time = 0.0
         self.space_preprocessing_bytes = 0
+        
+        # Per la Witness Search
+        self.adj = None
+        self.dist_ws = None
+        self.visited_ws = None
+        # Per la Query
+        self.dist_fwd = None
+        self.dist_bwd = None
+        self.prev_fwd = None
+        self.prev_bwd = None
 
-    def _witness_search(self, graph, start_node, target_node, max_dist_to_beat, hop_limit=15):
-        distances = {start_node: 0}
-        pq = [(0, start_node)]
-        hops = 0
-        while pq and hops < hop_limit:
-            hops += 1
-            dist, u = heapq.heappop(pq)
-            if dist > max_dist_to_beat: continue
-            if u == target_node: return dist
-            if dist > distances.get(u, float('inf')): continue
-            for v in graph.neighbors(u, mode='out'):
-                weight = graph.es[graph.get_eid(u, v)]['weight']
-                new_dist = dist + weight
-                if new_dist < distances.get(v, float('inf')) and new_dist <= max_dist_to_beat:
-                    distances[v] = new_dist
+    def _build_adjacency(self):
+        print("Pre-calcolo della lista di adiacenza per ottimizzazione...")
+        n = self.original_graph.vcount()
+        adj = [[] for _ in range(n)]
+        for e in self.original_graph.es:
+            u, v = e.tuple
+            w = e["weight"]
+            adj[u].append((v, w))
+        return adj
+
+    def _init_scratchpads(self):
+        print("Inizializzazione degli array scratchpad (numpy)...")
+        n = self.original_graph.vcount()
+        # Per Witness Search
+        self.dist_ws = np.full(n, np.inf, dtype=float)
+        self.visited_ws = np.zeros(n, dtype=bool)
+        # Per Query
+        self.dist_fwd = np.full(n, np.inf, dtype=float)
+        self.dist_bwd = np.full(n, np.inf, dtype=float)
+        self.prev_fwd = np.full(n, -1, dtype=int)
+        self.prev_bwd = np.full(n, -1, dtype=int)
+
+    def _witness_search(self, start_node, target_node, max_dist_to_beat, hop_limit=6):
+        pq = [(0.0, start_node)]
+        touched_nodes = [start_node]
+        self.dist_ws[start_node] = 0.0
+        self.visited_ws[start_node] = True
+        
+        final_dist = np.inf
+        while pq:
+            dist_u, u = heapq.heappop(pq)
+            if dist_u > max_dist_to_beat: break
+            if u == target_node:
+                final_dist = dist_u
+                break
+            if dist_u > self.dist_ws[u]: continue
+            if len(touched_nodes) > hop_limit: continue
+            
+            for v, weight_uv in self.adj[u]:
+                new_dist = dist_u + weight_uv
+                if new_dist < self.dist_ws[v]:
+                    self.dist_ws[v] = new_dist
                     heapq.heappush(pq, (new_dist, v))
-        return distances.get(target_node, float('inf'))
-
-    def _calculate_priority(self, graph, node):
-        predecessors = graph.neighbors(node, mode='in')
-        successors = graph.neighbors(node, mode='out')
-        shortcuts_to_add = 0
-        for u in predecessors:
-            for v in successors:
-                if u != v and graph.get_eid(u, v, error=False) == -1:
-                    shortcuts_to_add += 1
-        edge_difference = shortcuts_to_add - (len(predecessors) + len(successors))
-        # Aggiungiamo altri fattori per una priorità più robusta
-        priority = edge_difference * 10 + len(predecessors) + len(successors)
-        return priority
+                    if not self.visited_ws[v]:
+                        touched_nodes.append(v)
+                        self.visited_ws[v] = True
+        
+        for node in touched_nodes:
+            self.dist_ws[node] = np.inf
+            self.visited_ws[node] = False
+        return final_dist
 
     def _contract_node(self, current_graph, node):
         predecessors = list(current_graph.neighbors(node, mode='in'))
@@ -50,12 +82,17 @@ class Contraction_Hierarchies:
         for u in predecessors:
             for v in successors:
                 if u == v: continue
-                shortcut_weight = current_graph.es[current_graph.get_eid(u, node)]['weight'] + current_graph.es[current_graph.get_eid(node, v)]['weight']
-                witness_dist = self._witness_search(self.original_graph, u, v, shortcut_weight)
+                shortcut_weight = (
+                    current_graph.es[current_graph.get_eid(u, node)]['weight'] +
+                    current_graph.es[current_graph.get_eid(node, v)]['weight']
+                )
+                eid_existing = current_graph.get_eid(u, v, error=False)
+                if eid_existing != -1 and current_graph.es[eid_existing]['weight'] <= shortcut_weight:
+                    continue
+                witness_dist = self._witness_search(u, v, shortcut_weight)
                 if shortcut_weight <= witness_dist:
-                    eid = current_graph.get_eid(u, v, error=False)
-                    if eid != -1:
-                        edge = current_graph.es[eid]
+                    if eid_existing != -1:
+                        edge = current_graph.es[eid_existing]
                         if edge['weight'] > shortcut_weight:
                             edge['weight'] = shortcut_weight
                             edge['middle_node'] = node
@@ -63,81 +100,45 @@ class Contraction_Hierarchies:
                         current_graph.add_edge(u, v, weight=shortcut_weight, middle_node=node)
 
     def preprocess(self):
-        """
-        --- PRE-PROCESSING DINAMICO CON LAZY UPDATING ---
-        Implementa la logica di aggiornamento della priorità per un ordine di 
-        contrazione più efficiente e un pre-processing più veloce.
-        """
         start_time = time.time()
-        
-        # Lavoriamo su una copia del grafo che possiamo modificare
-        contraction_graph = self.original_graph.copy()
-        
-        # 1. Calcolo delle priorità iniziali
-        print("Calcolo delle priorità iniziali...")
-        priorities = {node: self._calculate_priority(contraction_graph, node) for node in range(contraction_graph.vcount())}
-        priority_queue = [(p, n) for n, p in priorities.items()]
-        heapq.heapify(priority_queue)
-        
-        self.node_order = []
-        processed_nodes = set()
-        
-        total_nodes = contraction_graph.vcount()
-        count = 0
-        while len(processed_nodes) < total_nodes:
-            if not priority_queue: break
-
-            p, node = heapq.heappop(priority_queue)
-
-            # Se il nodo è già stato processato, saltalo
-            if node in processed_nodes:
-                continue
+        print("Calcolo delle priorità iniziali (metodo statico)...")
+        node_priorities = []
+        for node in range(self.original_graph.vcount()):
+            predecessors = self.original_graph.neighbors(node, mode='in')
+            successors = self.original_graph.neighbors(node, mode='out')
+            shortcuts_to_add = 0
+            for u in predecessors:
+                for v in successors:
+                    if u != v and self.original_graph.get_eid(u, v, error=False) == -1:
+                        shortcuts_to_add += 1
+            edge_difference = shortcuts_to_add - (len(predecessors) + len(successors))
+            priority = (edge_difference, len(predecessors) + len(successors))
+            node_priorities.append((priority, node))
             
-            # --- LAZY UPDATE CHECK ---
-            # Ricalcola la priorità e verifica se quella estratta dalla coda è obsoleta.
-            current_priority = self._calculate_priority(contraction_graph, node)
-            if p > current_priority:
-                # La priorità è cambiata e peggiorata; rimettiamo il nodo in coda con il valore corretto.
-                priorities[node] = current_priority
-                heapq.heappush(priority_queue, (current_priority, node))
-                continue
-            
-            # Se la priorità è ancora la migliore, procediamo con la contrazione
-            self._contract_node(contraction_graph, node)
-            
-            self.node_order.append(node)
-            processed_nodes.add(node)
-            count += 1
-            if count % 500 == 0:
-                print(f"  Nodi contratti: {count}/{total_nodes}...")
-            
-            # --- AGGIORNAMENTO DEI VICINI ---
-            # Dopo aver contratto `node`, le priorità dei suoi vicini sono cambiate.
-            # Dobbiamo ricalcolarle e aggiornarle nella coda.
-            neighbors_to_update = set(contraction_graph.neighbors(node, mode='all'))
-            for neighbor in neighbors_to_update:
-                if neighbor not in processed_nodes:
-                    new_priority = self._calculate_priority(contraction_graph, neighbor)
-                    priorities[neighbor] = new_priority
-                    heapq.heappush(priority_queue, (new_priority, neighbor))
-
+        print("Ordinamento dei nodi...")
+        node_priorities.sort(key=lambda x: x[0])
+        self.node_order = [node for priority, node in node_priorities]
         self.node_levels = {node: i for i, node in enumerate(self.node_order)}
-        self.shortcut_graph = contraction_graph
-        self.shortcut_graph.es['middle_node'] = [None] * self.shortcut_graph.ecount()
         
-        # Ricostruiamo il grafo finale con gli shortcut per la query
-        final_graph = self.original_graph.copy()
-        final_graph.es['middle_node'] = [None] * final_graph.ecount()
-        final_graph.add_edges(
-            [(e.source, e.target) for e in self.shortcut_graph.es if 'middle_node' in e.attributes() and e['middle_node'] is not None],
-            attributes={'weight': [e['weight'] for e in self.shortcut_graph.es if 'middle_node' in e.attributes() and e['middle_node'] is not None],
-                        'middle_node': [e['middle_node'] for e in self.shortcut_graph.es if 'middle_node' in e.attributes() and e['middle_node'] is not None]}
-        )
-        self.shortcut_graph = final_graph
+        self.shortcut_graph = self.original_graph.copy()
+        self.shortcut_graph.es['middle_node'] = [None] * self.shortcut_graph.ecount()
 
+        self.adj = self._build_adjacency()
+        self._init_scratchpads()
+        
+        print("Avvio della contrazione sequenziale...")
+        for i, node in enumerate(self.node_order):
+            if i % 1000 == 0:
+                 print(f"  Contrazione nodo {i}/{len(self.node_order)}...")
+            self._contract_node(self.shortcut_graph, node)
+            
         end_time = time.time()
         self.preprocessing_time = (end_time - start_time) * 1000
-        self.space_preprocessing_bytes = self.dataUtils.get_deep_size(self.shortcut_graph.get_edgelist())
+        
+        self.space_preprocessing_bytes = (
+            self.shortcut_graph.ecount() * (sys.getsizeof(int()) * 2 + sys.getsizeof(float())) + 
+            len(self.node_levels) * (sys.getsizeof(int()) * 2)
+        )
 
     def _unpack_path(self, u, v):
         edge_id = self.shortcut_graph.get_eid(u, v, error=False)
@@ -152,15 +153,16 @@ class Contraction_Hierarchies:
 
     def query(self, start_node, end_node):
         start_time = time.time()
-        forward_dist = {node: float('inf') for node in range(self.original_graph.vcount())}
-        backward_dist = {node: float('inf') for node in range(self.original_graph.vcount())}
-        forward_dist[start_node] = 0
-        backward_dist[end_node] = 0
-        forward_prev = {node: None for node in range(self.original_graph.vcount())}
-        backward_prev = {node: None for node in range(self.original_graph.vcount())}
-        forward_queue = [(0, start_node)]
-        backward_queue = [(0, end_node)]
-        min_dist = float('inf')
+        
+        self.dist_fwd[start_node] = 0.0
+        self.dist_bwd[end_node] = 0.0
+        
+        touched_nodes_fwd = {start_node}
+        touched_nodes_bwd = {end_node}
+
+        forward_queue = [(0.0, start_node)]
+        backward_queue = [(0.0, end_node)]
+        min_dist = np.inf
         meeting_node = -1
         explored_nodes = 0
 
@@ -171,8 +173,8 @@ class Contraction_Hierarchies:
             if forward_queue and (not backward_queue or forward_queue[0][0] <= backward_queue[0][0]):
                 dist_f, u = heapq.heappop(forward_queue)
                 explored_nodes += 1
-                if backward_dist.get(u, float('inf')) != float('inf'):
-                    current_dist = dist_f + backward_dist[u]
+                if self.dist_bwd[u] != np.inf:
+                    current_dist = dist_f + self.dist_bwd[u]
                     if current_dist < min_dist:
                         min_dist = current_dist
                         meeting_node = u
@@ -180,15 +182,16 @@ class Contraction_Hierarchies:
                     if self.node_levels.get(v_id, -1) > self.node_levels.get(u, -1):
                         eid = self.shortcut_graph.get_eid(u, v_id)
                         weight = self.shortcut_graph.es[eid]['weight']
-                        if forward_dist.get(u, float('inf')) + weight < forward_dist.get(v_id, float('inf')):
-                            forward_dist[v_id] = forward_dist[u] + weight
-                            forward_prev[v_id] = u
-                            heapq.heappush(forward_queue, (forward_dist[v_id], v_id))
+                        if self.dist_fwd[u] + weight < self.dist_fwd[v_id]:
+                            self.dist_fwd[v_id] = self.dist_fwd[u] + weight
+                            self.prev_fwd[v_id] = u
+                            heapq.heappush(forward_queue, (self.dist_fwd[v_id], v_id))
+                            touched_nodes_fwd.add(v_id)
             elif backward_queue:
                 dist_b, u = heapq.heappop(backward_queue)
                 explored_nodes += 1
-                if forward_dist.get(u, float('inf')) != float('inf'):
-                    current_dist = dist_b + forward_dist[u]
+                if self.dist_fwd[u] != np.inf:
+                    current_dist = dist_b + self.dist_fwd[u]
                     if current_dist < min_dist:
                         min_dist = current_dist
                         meeting_node = u
@@ -196,10 +199,11 @@ class Contraction_Hierarchies:
                     if self.node_levels.get(v_id, -1) > self.node_levels.get(u, -1):
                         eid = self.shortcut_graph.get_eid(v_id, u)
                         weight = self.shortcut_graph.es[eid]['weight']
-                        if backward_dist.get(u, float('inf')) + weight < backward_dist.get(v_id, float('inf')):
-                            backward_dist[v_id] = backward_dist[u] + weight
-                            backward_prev[v_id] = u
-                            heapq.heappush(backward_queue, (backward_dist[v_id], v_id))
+                        if self.dist_bwd[u] + weight < self.dist_bwd[v_id]:
+                            self.dist_bwd[v_id] = self.dist_bwd[u] + weight
+                            self.prev_bwd[v_id] = u
+                            heapq.heappush(backward_queue, (self.dist_bwd[v_id], v_id))
+                            touched_nodes_bwd.add(v_id)
             else:
                 break
         
@@ -207,15 +211,15 @@ class Contraction_Hierarchies:
         if meeting_node != -1:
             shortcut_path_forward = []
             curr = meeting_node
-            while curr is not None:
+            while curr != -1:
                 shortcut_path_forward.append(curr)
-                curr = forward_prev.get(curr)
+                curr = self.prev_fwd[curr]
             shortcut_path_forward.reverse()
             shortcut_path_backward = []
-            curr = backward_prev.get(meeting_node)
-            while curr is not None:
+            curr = self.prev_bwd[meeting_node]
+            while curr != -1:
                 shortcut_path_backward.append(curr)
-                curr = backward_prev.get(curr)
+                curr = self.prev_bwd[curr]
             shortcut_path = shortcut_path_forward + shortcut_path_backward
             if shortcut_path:
                 path = [shortcut_path[0]]
@@ -226,18 +230,26 @@ class Contraction_Hierarchies:
 
         end_time = time.time()
         elapsed_time = (end_time - start_time) * 1000
-        query_space = (self.dataUtils.get_deep_size(forward_dist) + self.dataUtils.get_deep_size(backward_dist) + 
-                       self.dataUtils.get_deep_size(forward_prev) + self.dataUtils.get_deep_size(backward_prev))
+        
+        # Pulizia efficiente degli scratchpad della query
+        for node in touched_nodes_fwd:
+            self.dist_fwd[node] = np.inf
+            self.prev_fwd[node] = -1
+        for node in touched_nodes_bwd:
+            self.dist_bwd[node] = np.inf
+            self.prev_bwd[node] = -1
 
+        query_space = self.dist_fwd.nbytes + self.dist_bwd.nbytes + self.prev_fwd.nbytes + self.prev_bwd.nbytes
+        
         return {
             'graph_name': 'N/A',
             'tot nodes': self.original_graph.vcount(),
             'start_node': start_node,
             'end_node': end_node,
             'preprocessing_time (ms)': self.preprocessing_time,
-            'execution_time (ms)': elapsed_time if min_dist != float('inf') else -1,
+            'execution_time (ms)': elapsed_time if min_dist != np.inf else -1,
             'explored_nodes': explored_nodes,
-            'path_weight': min_dist if min_dist != float('inf') else -1,
+            'path_weight': min_dist if min_dist != np.inf else -1,
             'path': path if path else 'No path found',
             'space_occupation (Byte)': query_space + self.space_preprocessing_bytes
         }

@@ -59,11 +59,14 @@ def verify_and_plot_path():
     """
     print("\n--- Verifica e Visualizzazione Percorso su Grafo Reale ---")
     try:
-        city_query = input("Inserisci la città per il test (es. 'L'Aquila, Italy' o 'Rome, Italy'): ")
+     #    city_query = input("Inserisci la città per il test (es. 'L'Aquila, Italy' o 'Rome, Italy'): ")
+        city_query = "L'Aquila, Abruzzo, Italy"
         graph = real_graphs.RealGraph(city_query)
         
-        start_node = int(input(f"Inserisci il nodo di partenza (0-{graph.graph.vcount()-1}): "))
-        end_node = int(input(f"Inserisci il nodo di arrivo (0-{graph.graph.vcount()-1}): "))
+     #    start_node = int(input(f"Inserisci il nodo di partenza (0-{graph.graph.vcount()-1}): "))
+     #    end_node = int(input(f"Inserisci il nodo di arrivo (0-{graph.graph.vcount()-1}): "))
+        start_node = 1234
+        end_node = 4321
 
         if not (0 <= start_node < graph.graph.vcount() and 0 <= end_node < graph.graph.vcount()):
             print("Errore: Nodi non validi.")
