@@ -57,13 +57,15 @@ class Dijkstra:
 
           # Ricostruisci il percorso
           path = []
-          node = end_node
-          if distances[end_node] != float('inf'):
-               while node is not None:
-                    path.insert(0, node)
-                    node = previous[node]
-          else:
-               path = None  # Nessun percorso trovato
+          curr = end_node
+          if distances.get(curr, float('inf')) != float('inf'):
+               while curr is not None:
+                    path.append(curr)
+                    curr = previous.get(curr)
+               path.reverse()
+          
+          final_path_weight = distances.get(end_node, float('inf'))
+          if final_path_weight == float('inf'): final_path_weight = -1
 
           space_ocupation = self.dataUtils.get_deep_size(distances) + self.dataUtils.get_deep_size(previous) + self.dataUtils.get_deep_size(queue)
           
@@ -75,5 +77,6 @@ class Dijkstra:
                'execution_time (ms)': elapsed_time,
                'explored_nodes': len(visited),
                'space_occupation (Byte):': space_ocupation,
-               'path': path if path else 'No path found'
+               'path': path if path else 'No path found',
+               'path_weight': final_path_weight,
           }

@@ -53,6 +53,97 @@ def run_single_experiment(graph_obj, graph_name, num_queries, dijkstra, ch_algo)
      print(f"--- Esperimento su {graph_name} completato ---")
      return dijkstra_results, ch_results
 
+def verify_and_plot_path():
+    """
+    Calcola un singolo percorso su un grafo reale e lo visualizza.
+    """
+    print("\n--- Verifica e Visualizzazione Percorso su Grafo Reale ---")
+    try:
+        city_query = input("Inserisci la città per il test (es. 'L'Aquila, Italy' o 'Rome, Italy'): ")
+        graph = real_graphs.RealGraph(city_query)
+        
+        start_node = int(input(f"Inserisci il nodo di partenza (0-{graph.graph.vcount()-1}): "))
+        end_node = int(input(f"Inserisci il nodo di arrivo (0-{graph.graph.vcount()-1}): "))
+
+        if not (0 <= start_node < graph.graph.vcount() and 0 <= end_node < graph.graph.vcount()):
+            print("Errore: Nodi non validi.")
+            return
+
+        # Esegui Dijkstra per ottenere il percorso di riferimento
+        dijkstra_algo = dj.Dijkstra()
+        dijkstra_result = dijkstra_algo.run(graph, 1, [start_node], [end_node])[0]
+        
+        # Esegui CH per confrontare il peso
+        ch_algo = ch.Contraction_Hierarchies()
+        ch_result = ch_algo.run(graph, 1, [start_node], [end_node])[0]
+        
+        print("\n--- Risultati Confrontati ---")
+        print(f"Dijkstra Path Weight: {dijkstra_result['path_weight']:.2f}")
+        print(f"CH Path Weight:       {ch_result['path_weight']:.2f}")
+
+        if abs(dijkstra_result['path_weight'] - ch_result['path_weight']) < 1e-6:
+            print("VALIDAZIONE: I pesi dei percorsi corrispondono.")
+        else:
+            print("ATTENZIONE: I pesi dei percorsi NON corrispondono.")
+
+        # Visualizza il percorso sulla mappa
+        graph.plot_graph(path=dijkstra_result['path'], start_node=start_node, end_node=end_node)
+
+    except Exception as e:
+        print(f"Si è verificato un errore: {e}")
+
+def run_random_graph_correctness_test():
+    """
+    Esegue un test mirato su un grafo random per verificare la correttezza confrontando i risultati.
+    """
+    print("\n--- Test di Correttezza su Grafo Random ---")
+    try:
+        num_nodes = int(input("Inserisci il numero di nodi per il grafo random: "))
+        density = float(input("Inserisci la densità (es. 0.01): "))
+        seed = int(input("Inserisci un seed per la riproducibilità (es. 42): "))
+
+        graph = random_graphs.Random_Graph(num_nodes, density, seed)
+        
+        start_node = int(input(f"Inserisci il nodo di partenza (0-{num_nodes-1}): "))
+        end_node = int(input(f"Inserisci il nodo di arrivo (0-{num_nodes-1}): "))
+
+        if not (0 <= start_node < num_nodes and 0 <= end_node < num_nodes):
+            print("Errore: Nodi non validi.")
+            return
+
+        # Esegui Dijkstra
+        dijkstra_algo = dj.Dijkstra()
+        dijkstra_result = dijkstra_algo.run(graph, 1, [start_node], [end_node])[0]
+        
+        # Esegui CH
+        ch_algo = ch.Contraction_Hierarchies()
+        ch_result = ch_algo.run(graph, 1, [start_node], [end_node])[0]
+        
+        print("\n--- Risultati del Test di Correttezza ---")
+        print(f"Query: {start_node} -> {end_node}")
+        
+        print("\n[DIJKSTRA]")
+        print(f"  - Peso del percorso: {dijkstra_result['path_weight']:.2f}")
+        print(f"  - Percorso (nodi): {dijkstra_result['path']}")
+        
+        print("\n[CONTRACTION HIERARCHIES]")
+        print(f"  - Peso del percorso: {ch_result['path_weight']:.2f}")
+        print(f"  - Percorso (nodi): {ch_result['path']}")
+
+        print("\n--- VERIFICA ---")
+        if abs(dijkstra_result['path_weight'] - ch_result['path_weight']) < 1e-6:
+            print("OK: I pesi dei percorsi calcolati dai due algoritmi corrispondono.")
+        else:
+            print("!!! ERRORE: I pesi dei percorsi NON corrispondono. !!!")
+            
+        if dijkstra_result['path'] == ch_result['path']:
+             print("OK: Le liste di nodi dei percorsi corrispondono.")
+        else:
+             print("ATTENZIONE: Le liste di nodi dei percorsi NON corrispondono.")
+
+    except Exception as e:
+        print(f"Si è verificato un errore durante il test: {e}")
+
 def main():
      print("Algorithm Comparison Tool")
      print("Initialization...")
@@ -63,6 +154,8 @@ def main():
      print("1. Interactive Random Graph")
      print("2. Real Graph")
      print("3. Full Test")
+     print("4. verifica e visualizza percorso")
+     print("5. Test di correttezza su un grafo random")
      choice = input("Enter your choice (1, 2 or 3): ")
      if choice == '1':
           test_name = "Test 1"
@@ -145,7 +238,12 @@ def main():
           
           from analysis import main_menu
           main_menu('7')  # Pass '7' to run all analyses automatically
-          
+     elif choice == '4':
+          verify_and_plot_path()
+     elif choice == '5':
+          run_random_graph_correctness_test()
+     elif choice == '6':
+          print("Uscita.")
      else:
          print("Invalid choice. Exiting.")
          return
